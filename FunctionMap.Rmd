@@ -1,0 +1,306 @@
+---
+title: "FunctionMap"
+author: "Austin Wilkins"
+date: "5/29/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Overview of functions used in China_FDI project
+
+**Description:** Functions created for working with ProQuest raw text files.  
+
+**URL:** https://github.com/profrobwells/China_FDI.git  
+
+**Imports:** tidyverse, tidytext, tidyselect, data.table, lubridate, igraph, ggraph, sentimentr  
+
+**R functions documented:**
+
+[headline_date](#headline_date)    
+[make_token](#make_token)  
+[table_bigrams](#table_bigrams)  
+[simple_bigrams](#table_bigrams)  
+[graph_bigrams](#graph_bigrams)  
+[sentiment_score](#sentiment_score)  
+[find_articles](#find_articles)  
+[make_tidytexts](#make_tidytexts)  
+[clean_text](#clean_text)  
+[string_search](#string_search)  
+[pull_article](#pull_article)  
+
+
+*** 
+```{r headline_date}
+```
+# **headline_date**
+*Clean raw ProQuest textfile into individual sentences.*
+
+#### **Description:**
+This function takes a raw textfile from ProQuest and splits each sentence into a row in a dataframe. Each row in the new dataframe holds the headline, article number, line number, individual sentence, and the article publish date. 
+
+#### **Usage:**  
+`headline_date(textfile)`
+
+#### **Arguments:**  
+`textfile` ---	Location of textfile.  
+`omit` --- Year to omit from final table. Defaults to 2019, use (omit = FALSE) to keep all years. 
+
+#### **Depends on:**  
+None
+
+#### **Dependents:**  
+`make_token`  
+`table_bigrams`  
+`graph_bigrams`  
+`string_search`  
+`pull_article`  
+
+#### **Example:**  
+`WSJ <- headline_date("./ExtractedTexts/BroadFilter-WSJ.txt", omit = FALSE)`
+
+*** 
+```{r make_token}
+```
+# **make_token**
+*Clean raw ProQuest textfile into individual words.*
+
+#### **Description:**
+This function takes a raw textfile from ProQuest and splits each word into a row in a dataframe. Each row in the new dataframe holds the headline, article number, line number, individual word, and the article publish date.  
+
+#### **Usage:**  
+`make_token(textfile)`
+
+#### **Arguments:**  
+`textfile` ---	Location of textfile.
+
+#### **Depends on:**  
+`headline_date`
+
+#### **Dependents:**  
+None  
+
+#### **Example:**  
+`WSJ <- make_token("./ExtractedTexts/BroadFilter-WSJ.txt")`
+
+
+*** 
+```{r table_bigrams}
+```
+
+
+# **table_bigrams**
+*Clean raw ProQuest textfile into counted bigrams.*
+
+#### **Description:**
+This function takes a raw textfile from ProQuest and creates a dataframe of bigrams.
+
+#### **Usage:**  
+`table_bigrams(textfile, n = int, merge = TRUE, by_year = FALSE)`  
+
+`simple_bigrams(textfile)`
+
+#### **Arguments:**  
+`textfile` --- Location of textfile.  
+
+`n`--- Number of bigrams to extract, descending. Defaults to maximum 10,000,000 bigrams.
+
+`merge`--- 	If TRUE, the default, returns bigrams in single column. If FALSE, splits bigrams into two columns.
+	
+`by_year`---	If FALSE, the default, returns bigrams of entire textfile. If TRUE, returns n number of bigrams for each year individually, with a column for year. 
+
+#### **Depends on:**  
+`headline_date`
+
+#### **Dependents:**  
+`graph_bigrams`
+
+#### **Example:**  
+`# extract all bigrams in textfile`  
+`bigrams <- table_bigram("./ExtractedTexts/BroadFilter-WSJ.txt")`  
+`bigrams <- simple_bigrams("./ExtractedTexts/BroadFilter-WSJ.txt")`  
+  
+`# extract top 100 bigrams from whole textfile`  
+`bigrams <- table_bigram("./ExtractedTexts/BroadFilter-WSJ.txt", n = 100)`  
+  
+`# extract top 100 bigrams for each year in textfile`  
+`bigrams <- table_bigram("./ExtractedTexts/BroadFilter-WSJ.txt", n = 100, by_year = TRUE)`  
+  
+`# extract all bigrams in textfile, and split them into two columns`  
+`bigrams <- table_bigram("./ExtractedTexts/BroadFilter-WSJ.txt", merge =FALSE)`  
+
+***
+```{r graph_bigrams}
+```
+# **graph_bigrams**
+*Turn raw ProQuest text into directed network diagram of bigrams.*
+
+#### **Description:**
+This function takes a raw textfile from ProQuest and creates a directed network diagram. Diagram is saved as a ggplot object
+
+#### **Usage:**  
+`graph_bigrams(textfile, cutoff = int)`
+
+#### **Arguments:**  
+`textfile` --- Location of textfile.  
+
+`cutoff`--- Number of bigrams to extract, descending. Defaults to maximum 30 bigrams.
+
+
+#### **Depends on:**  
+`headline_date`
+`table_bigram`
+
+#### **Dependents:**  
+
+#### **Example:**  
+`# extract 50 bigrams from textfile`  
+`graph <- graph_bigrams("./ExtractedTexts/BroadFilter-WSJ.txt", cutoff = 50)`  
+`graph`
+  
+
+*** 
+```{r sentiment_score}
+```
+# **sentiment_score**
+*Finds sentiment scores of each article in a raw ProQuest textfile.*
+
+#### **Description:**
+This function takes a raw textfile from ProQuest and analyzes the sentiment of each article based on the Bing sentiment dictionary. Returns a table with the headline, score, article number, and publication date of each article. Article score is a single dimension, with negative numbers associated with negative sentiment and positive numbers associated with positive sentiment.  
+
+#### **Usage:**  
+`sentiment_score(textfile)`
+
+#### **Arguments:**  
+`textfile` ---	Location of textfile.
+
+#### **Depends on:**  
+`headline_date`
+
+#### **Dependents:**  
+None  
+
+#### **Example:**  
+`WSJ_sentiment <- sentiment_score("./ExtractedTexts/BroadFilter-WSJ.txt")`
+
+*** 
+```{r find_articles}
+```
+# **find_articles **  
+### Under development
+
+*** 
+```{r make_tidytexts}
+```
+# **make_tidytexts**   
+   
+## <span style="color:red">**Depreciated**</span>  --- do not use
+Use headline_date on individual files to make tidy files.  
+Use sentiment_score to get sentiments.  
+use make_token to tokenize text files.  
+
+*Takes raw ProQuest textfile and produces 4 different tidyfiles.*  
+
+#### **Description:**
+This function takes a raw textfile from ProQuest and produces 4 tidyfiles, which are then saved to /TidyTexts. The tidyfiles are dataframe split by sentence, a datafram tokenized by work, a general sentiment dataframe, and a summarized sentiment dataframe.  
+
+#### **Usage:**  
+`make_tidytexts(textfile)`
+
+#### **Arguments:**  
+`textfile` ---	Location of textfile.
+
+#### **Depends on:**  
+None
+
+#### **Dependents:**  
+None  
+
+#### **Example:**  
+`make_tidytexts("./ExtractedTexts/BroadFilter-WSJ.txt")`
+
+
+*** 
+```{r clean_text}
+```
+# **clean_text**   
+   
+##  <span style="color:red">**Depreciated**</span>  --- do not use
+use make_token to tokenize text files.  
+
+*Takes raw ProQuest textfile and produces tokenized words.*  
+
+#### **Description:**
+This function takes a raw textfile from ProQuest and produces a dataframe of tokenized words from the text document.
+
+#### **Usage:**  
+`clean_text(textfile)`
+
+#### **Arguments:**  
+`textfile` ---	Location of textfile.
+
+#### **Depends on:**  
+None
+
+#### **Dependents:**  
+None  
+
+#### **Example:**  
+`cleaned_text <- clean_text("./ExtractedTexts/BroadFilter-WSJ.txt")`
+  
+***
+```{r string_search}
+```
+# **string_search**
+*Finds articles within textfile that match given regex epression.*
+
+#### **Description:**
+This function takes a regex expression, and searches through a raw proquest textfile for instances of the regex. Returns a table with some metadata attached for each instance. Options to return table or kable.
+
+#### **Usage:**  
+`string_search("textfile",regex, type)`  
+
+#### **Arguments:**  
+`textfile` ---	Location of textfile.  
+
+`regex`--- Expression to search for.  
+
+`type` --- Option to return a table or a kable. Defaults to table.
+
+#### **Depends on:**  
+`headline_date`  
+
+#### **Dependents:**  
+None  
+
+#### **Example:**  
+`table <- string_search("./ExtractedTexts/BroadFilter-WSJ.txt",verynegterms, type = "kable")`  
+
+*** 
+```{r pull_article}
+```
+# **pull_article**
+*Pulls the specified article as raw text.*
+
+#### **Description:**
+This function takes a specified raw ProQuest textfile, and pulls a specific article based on the article number. 
+
+#### **Usage:**  
+`pull_article("textfile",article_number)`  
+
+#### **Arguments:**  
+`textfile` ---	Location of textfile.  
+
+`article_number` --- Article number to pull
+
+#### **Depends on:**  
+`headline_date`  
+
+#### **Dependents:**  
+None  
+
+#### **Example:**  
+`text <- pull_article("ExtractedTexts/BroadFilter-WSJ.txt", 115)`  
+
