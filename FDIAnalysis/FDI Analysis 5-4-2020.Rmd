@@ -1,0 +1,180 @@
+---
+title: "FDI Data Analysis"
+author: "Rob Wells"
+date: "5/4/2020"
+output: html_document
+---
+## Analysis of U.S.-China Foreign Direct Investment Trends, 2003-2018    
+
+
+```{r include=FALSE}
+library(tidyverse)
+library(rio)
+library(janitor)
+#install.packages("ggpubr")
+library(ggpubr)
+library(lubridate)
+```
+
+Import data from Bureau of Economic Analysis
+Details:
+Foreign Direct Investment in the U.S.,Foreign Direct Investment Position in the United States on a Historical-Cost Basis																																							
+Bureau of Economic Analysis																																							
+By Country Only (Major Countries)  (Millions of Dollars)										
+https://apps.bea.gov/iTable/iTable.cfm?reqid=2&step=10&isuri=1&step1prompt1=2&step2prompt3=1&step1prompt2=1&step8prompt10a=2,4,23,35,38,45,85&step4prompt5=4&step3prompt4=22&step5prompt6=1,2&step7prompt8=11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,48,49,52,55,56,58&step8prompt9a=2																												
+
+```{r}
+
+FDI2018 <- rio::import("https://github.com/profrobwells/ChinaFDI/blob/master/Data/BEA%20FDI%20Data%20China%20and%20World%202002-2018.xlsx?raw=true", which="China and World", skip=5)
+```
+```{r}
+FDI2018 <- FDI2018[-c(10:24),] 
+FDI2018 <- janitor::clean_names(FDI2018)
+```
+
+```{r}
+FDI2018a <- as.data.frame(t(FDI2018))
+FDI2018a <- janitor::clean_names(FDI2018a)
+```
+
+```{r}
+FDI2018a <- FDI2018a %>% 
+  row_to_names(row_number = 1)
+```
+```{r}
+colnames(FDI2018a)[1:9] <- c("year", "total_fdi", "europe", "latam", "south_centAmerica", "africa", "mideast", "asia_pacific", "china")
+```
+
+
+```{r}
+FDI2018a[1:9] <- lapply(FDI2018a[1:9], as.character)
+FDI2018a[2:9] <- lapply(FDI2018a[2:9], as.numeric)
+#FDI2018a$year <- as.Date(as.character(FDI2018a$year),format="%Y")
+#FDI2018a$year <- lubridate::year(FDI2018a$year)
+glimpse(FDI2018a)
+```
+
+```{r}
+ChinaUS <- FDI2018a %>% 
+  select(year, total_fdi, china) %>% 
+  filter(year > 2001)
+glimpse(ChinaUS)
+```
+
+
+#Basic graphic - labels
+```{r}
+ChinaUS %>% 
+  ggplot(aes(x = year, 
+             y = china,
+             fill = china)) +
+  geom_col(position = "dodge", show.legend = FALSE) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  #label formatting. Scales, into percentages. hjust moves to the grid
+  # geom_text(aes(label = (china)), position = position_stack(vjust = 5.5), hjust = -5.5, size = 2.5)  +
+  #  geom_text(aes(label = scales::comma(china)), size = 2.5, vjust = -1) +
+   geom_text(aes(label = scales::dollar(china)), size = 2.5, vjust = -1) +
+     scale_y_continuous(limits=c(0, 50000), labels = scales::dollar) +
+         labs(title = "Chinese Direct Investment in US, 2002-2018",
+       #subtitle = "Districts with More Than 15% Homeless",
+       caption = "Source: Bureau of Economic Analysis.  Graphic by Rob Wells, 5-4-2020",
+       y="FDI in Millions USD $",
+       x="")
+
+```
+
+##Importing Economic Filter Articles for Comparison
+
+```{r}
+EF <- rio::import("https://uark.box.com/shared/static/fp8yu50p7ecul0ayfo9lnowu7ugqkbu7.csv")
+```
+
+Frequency Analysis: Table of articles by publication
+```{r}
+total <- EF %>%
+  group_by(Pub) %>% 
+  mutate(total_articles = n()) %>% 
+  ungroup() %>% 
+  distinct(Pub, total_articles) %>% 
+  arrange(desc(total_articles)) %>% 
+  adorn_totals("row")
+```
+
+#Makes html table with kables
+```{r}
+colnames(total)[1:2] <- c("Publication", "Total Articles")
+library(kableExtra)
+total %>% 
+  kable() %>%
+  kable_styling("striped")
+```
+
+Manage Dates
+```{r}
+library(lubridate)
+EF2 <- EF
+EF$datex <- EF$Date
+EF <- EF %>%
+  mutate(datex = ymd(Date)) %>%
+  mutate(yearmon= format(datex, "%Y-%m")) %>% 
+  mutate(year= format(datex, "%Y"))
+```
+
+#Count articles by Year
+```{r}
+EconomicFilter_year <- EF %>%
+  select(Pub, datex, year) %>%   
+  group_by(Pub) %>%
+  count(year)
+```
+
+#Stacked Bar Chart
+```{r}
+ggplot(EconomicFilter_year, aes(x = year, y = n, fill=Pub))  +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle=90)) +
+  labs(fill = "Publication Name") +
+  labs(title = "U.S.-China Economic Filter News - Articles by Year", 
+       caption = "Source: ProQuest - EconomicFilter Search. 5,306 articles
+       Graphic by Rob Wells. 5-4-2020",
+       x="Year",
+       y="Number of Articles") 
+
+#Created EconomicFilter ArticlesYr 2-25-2020
+```
+#Total articles by Year
+```{r}
+total2 <- EF %>%
+  select(datex, year) %>%   
+  count(year)
+total2
+```
+
+
+#Join with FDI Data
+
+```{r}
+China_FDI_News <- ChinaUS %>% 
+  inner_join(total2, by="year")
+colnames(China_FDI_News)[3:4] <- c("china_fdi", "total_articles")
+China_FDI_News
+```
+
+```{r}
+write.csv(China_FDI_News,"./Data/China_FDI_News.csv")
+```
+#Correlation between news and FDI inflows
+Based on this posting
+http://www.sthda.com/english/wiki/correlation-test-between-two-variables-in-r
+
+```{r}
+ggscatter(China_FDI_News, x = "china_fdi", y = "total_articles", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson",
+          xlab = "China FDI in U.S.", ylab = "News articles studied")
+
+```
+
+
+
+
