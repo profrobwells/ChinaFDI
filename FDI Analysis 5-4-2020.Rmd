@@ -1,0 +1,424 @@
+---
+title: "FDI Data Analysis"
+author: "Rob Wells"
+date: "5/4/2020"
+output: html_document
+---
+## Analysis of U.S.-China Foreign Direct Investment Trends, 2003-2018    
+
+
+```{r include=FALSE}
+library(tidyverse)
+library(rio)
+library(janitor)
+#install.packages("ggpubr")
+library(ggpubr)
+library(lubridate)
+```
+
+Import data from Bureau of Economic Analysis
+Details:
+Foreign Direct Investment in the U.S.,Foreign Direct Investment Position in the United States on a Historical-Cost Basis																																							
+Bureau of Economic Analysis																																							
+By Country Only (Major Countries)  (Millions of Dollars)										
+https://apps.bea.gov/iTable/iTable.cfm?reqid=2&step=10&isuri=1&step1prompt1=2&step2prompt3=1&step1prompt2=1&step8prompt10a=2,4,23,35,38,45,85&step4prompt5=4&step3prompt4=22&step5prompt6=1,2&step7prompt8=11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,48,49,52,55,56,58&step8prompt9a=2																												
+
+```{r}
+
+FDI2018 <- rio::import("https://github.com/profrobwells/ChinaFDI/blob/master/Data/BEA%20FDI%20Data%20China%20and%20World%202002-2018.xlsx?raw=true", which="China and World", skip=5)
+```
+```{r}
+FDI2018 <- FDI2018[-c(10:24),] 
+FDI2018 <- janitor::clean_names(FDI2018)
+```
+
+```{r}
+FDI2018a <- as.data.frame(t(FDI2018))
+FDI2018a <- janitor::clean_names(FDI2018a)
+```
+
+```{r}
+FDI2018a <- FDI2018a %>% 
+  row_to_names(row_number = 1)
+```
+```{r}
+colnames(FDI2018a)[1:9] <- c("year", "total_fdi", "europe", "latam", "south_centAmerica", "africa", "mideast", "asia_pacific", "china")
+```
+
+
+```{r}
+FDI2018a[1:9] <- lapply(FDI2018a[1:9], as.character)
+FDI2018a[2:9] <- lapply(FDI2018a[2:9], as.numeric)
+#FDI2018a$year <- as.Date(as.character(FDI2018a$year),format="%Y")
+#FDI2018a$year <- lubridate::year(FDI2018a$year)
+glimpse(FDI2018a)
+```
+
+```{r}
+ChinaUS <- FDI2018a %>% 
+  select(year, total_fdi, china) %>% 
+  filter(year > 2001)
+glimpse(ChinaUS)
+```
+
+
+#Basic graphic - labels
+```{r}
+ChinaUS %>% 
+  ggplot(aes(x = year, 
+             y = china,
+             fill = china)) +
+  geom_col(position = "dodge", show.legend = FALSE) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  #label formatting. Scales, into percentages. hjust moves to the grid
+  # geom_text(aes(label = (china)), position = position_stack(vjust = 5.5), hjust = -5.5, size = 2.5)  +
+  #  geom_text(aes(label = scales::comma(china)), size = 2.5, vjust = -1) +
+   geom_text(aes(label = scales::dollar(china)), size = 2.5, vjust = -1) +
+     scale_y_continuous(limits=c(0, 50000), labels = scales::dollar) +
+         labs(title = "Chinese Direct Investment in US, 2002-2018",
+       #subtitle = "Districts with More Than 15% Homeless",
+       caption = "Source: Bureau of Economic Analysis.  Graphic by Rob Wells, 5-4-2020",
+       y="FDI in Millions USD $",
+       x="")
+
+```
+
+##Importing Economic Filter Articles for Comparison
+
+```{r}
+EF <- rio::import("https://uark.box.com/shared/static/fp8yu50p7ecul0ayfo9lnowu7ugqkbu7.csv")
+```
+
+Frequency Analysis: Table of articles by publication
+```{r}
+total <- EF %>%
+  group_by(Pub) %>% 
+  mutate(total_articles = n()) %>% 
+  ungroup() %>% 
+  distinct(Pub, total_articles) %>% 
+  arrange(desc(total_articles)) %>% 
+  adorn_totals("row")
+```
+
+#Makes html table with kables
+```{r}
+colnames(total)[1:2] <- c("Publication", "Total Articles")
+library(kableExtra)
+total %>% 
+  kable() %>%
+  kable_styling("striped")
+```
+
+Manage Dates
+```{r}
+library(lubridate)
+EF2 <- EF
+EF$datex <- EF$Date
+EF <- EF %>%
+  mutate(datex = ymd(Date)) %>%
+  mutate(yearmon= format(datex, "%Y-%m")) %>% 
+  mutate(year= format(datex, "%Y"))
+```
+
+#Count articles by Year
+```{r}
+EconomicFilter_year <- EF %>%
+  select(Pub, datex, year) %>%   
+  group_by(Pub) %>%
+  count(year)
+```
+
+#Stacked Bar Chart
+```{r}
+ggplot(EconomicFilter_year, aes(x = year, y = n, fill=Pub))  +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle=90)) +
+  labs(fill = "Publication Name") +
+  labs(title = "U.S.-China Economic Filter News - Articles by Year", 
+       caption = "Source: ProQuest - EconomicFilter Search. 5,306 articles
+       Graphic by Rob Wells. 5-4-2020",
+       x="Year",
+       y="Number of Articles") 
+
+#Created EconomicFilter ArticlesYr 2-25-2020
+```
+#Total articles by Year
+```{r}
+total2 <- EF %>%
+  select(datex, year) %>%   
+  count(year)
+total2
+```
+
+
+#Join with FDI Data
+
+```{r}
+China_FDI_News <- ChinaUS %>% 
+  inner_join(total2, by="year")
+colnames(China_FDI_News)[3:4] <- c("china_fdi", "total_articles")
+China_FDI_News
+```
+
+```{r}
+write.csv(China_FDI_News,"./Data/China_FDI_News.csv")
+```
+# Correlation between news and FDI inflows
+Based on this posting
+http://www.sthda.com/english/wiki/correlation-test-between-two-variables-in-r   
+
+--
+
+### This test shows p-value = 0.004712, which suggests a significant relationship between the number of news articles and the amount of China FDI by year
+
+```{r}
+cor.test(China_FDI_News$china_fdi, China_FDI_News$total_articles, method = "pearson")
+```
+
+
+```{r}
+ggscatter(China_FDI_News, x = "china_fdi", y = "total_articles", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson",
+          xlab = "China FDI in U.S.", ylab = "News articles studied")
+
+```
+
+
+Spearman rank correlation coefficient
+
+Spearman’s rho statistic is also used to estimate a rank-based measure of association. This test may be used if the data do not come from a bivariate normal distribution.
+
+
+
+    -1 indicates a strong negative correlation : this means that every time x increases, y decreases (left panel figure)
+    0 means that there is no association between the two variables (x and y) (middle panel figure)
+    1 indicates a strong positive correlation : this means that y increases with x (right panel figure)
+
+
+
+In this case, the correlation coefficient between FDI and news articles is .76, suggesting a strong correlation.
+
+```{r}
+cor.test(China_FDI_News$china_fdi, China_FDI_News$total_articles, method = "spearman")
+```
+### Comparing means
+http://www.sthda.com/english/wiki/comparing-means-in-r
+
+
+# Correlate FDI and Sentiment
+With Average Bing Sentiment 
+```{R}
+#Importing from Sentiment analysis 5-8-2020, Line 179
+avgbing <- rio::import ("https://raw.githubusercontent.com/profrobwells/ChinaFDI/master/Data/bing_AVG_EF_sent_year.csv")
+```
+
+#Join Sentiment with FDI Data
+
+```{r}
+glimpse(ChinaUS)
+```
+```{r}
+avgbing$year <- as.character(avgbing$year)
+glimpse(avgbing)
+
+```
+
+```{r}
+China_FDI_Sent <- ChinaUS %>% 
+  inner_join(avgbing, by="year")
+head(China_FDI_Sent)
+```
+```{r}
+China_FDI_Sent$year <- as.numeric(China_FDI_Sent$year)
+glimpse(China_FDI_Sent)
+
+#write.csv(China_FDI_Sent,"./Data/China_FDI_Sent.csv")
+```
+
+
+
+```{r}
+China_FDI_Sent %>% 
+ggplot(aes(x= year, y= yr_average, color = yr_average > .1, size = 4)) +
+  geom_point() +
+  scale_x_continuous(breaks=c(2002:2018)) +
+  theme(legend.position = "none") +
+   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+   labs(title = "China News Sentiment by Year", 
+       subtitle = "Average Sentiment, News on Chinese Investment in U.S.",
+       caption = "Source: ProQuest - EconomicFilter Search. 5,306 articles
+       Graphic by Rob Wells. 5-10-2020",
+       x=" ",
+       y="Sentiment: Negative -> Positive") 
+
+#ggsave("AvgChina_Sentiment.png",device = "png",width=10,height=8, dpi=800)
+
+```
+
+
+
+# Dual Chart FDI and Sentiment
+```{r}
+bf <-  ggplot(data= China_FDI_Sent) +
+  geom_point(mapping = aes(x= year, y= yr_average,  color = yr_average > .1, size = 4), stat="identity") +
+  geom_line(mapping = aes(x= year, y= china/1000, color= "GnBu"), stat="identity") +
+  theme(legend.position = "none") +
+  scale_y_continuous(name = "News Sentiment: Negative -> Positive", 
+                     sec.axis = sec_axis(~.*1, name = "FDI, Billions USD")) +
+  scale_x_continuous(breaks=c(2002:2018)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+   labs(title = "China FDI, News Sentiment by Year", 
+       subtitle = "Trends in Foreign Investment in US, Average News Sentiment",
+       caption = "Source: ProQuest - EconomicFilter Search. 5,306 articles
+       Graphic by Rob Wells. 5-10-2020",
+       x=" ",
+       y="Sentiment: Negative -> Positive") 
+
+bf
+#Created Avg Sentiment FDI 5-11-2020
+#ggsave("AvgFDI_Sentiment.png",device = "png",width=10,height=8, dpi=800)
+```
+
+
+
+# Correlation between average sentiment and FDI inflows
+--
+```{r}
+glimpse(China_FDI_Sent)
+```
+
+
+
+
+### This test shows p-value = 0.006938, which suggests a significant relationship between average negative sentiment in news articles and the amount of China FDI by year
+
+```{r}
+neg <- China_FDI_Sent %>% 
+  filter(sentiment=="negative")
+
+cor.test(neg$china, neg$yr_average, method = "pearson")
+```
+
+
+```{r}
+ggscatter(neg, x = "china", y = "yr_average", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson",
+          xlab = "China FDI in U.S.", ylab = "Average of Negative News Sentiment")
+
+```
+
+
+### This test shows p-value = 0.006321, which suggests a significant relationship between average positive sentiment in news articles and the amount of China FDI by year
+
+```{r}
+pos <- China_FDI_Sent %>% 
+  filter(sentiment=="positive")
+
+cor.test(pos$china, pos$yr_average, method = "pearson")
+```
+
+# This chart examines the trends in FDI and positive news sentiment
+
+```{r}
+ggscatter(pos, x = "china", y = "yr_average", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson",
+          xlab = "China FDI in U.S.", ylab = "Average of Positive News Sentiment")
+
+```
+
+
+## Analyzing Total Bing Sentiment   
+### This is an alternate examination of total -- not average -- sentiment. This is distorted by the number of articles -- more articles equals more words equals a higher or lower sentiment score. But I present the aggregates just the same.
+```{R}
+#Importing from Sentiment analysis 5-8-2020, Line 135
+Bing <- rio::import("https://raw.githubusercontent.com/profrobwells/ChinaFDI/master/Data/EF_bing_year_total.csv")
+```
+
+#Join Sentiment with FDI Data
+
+```{r}
+glimpse(ChinaUS)
+```
+```{r}
+Bing$year <- as.character(Bing$year)
+glimpse(Bing)
+
+```
+
+```{r}
+China_FDI_Total_Sent <- ChinaUS %>% 
+  inner_join(Bing, by="year")
+head(China_FDI_Total_Sent)
+```
+```{r}
+China_FDI_Total_Sent$year <- as.numeric(China_FDI_Total_Sent$year)
+glimpse(China_FDI_Total_Sent)
+
+```
+
+## Bar Chart of Total Sentiment
+
+```{r}
+zz <-  ggplot(data= China_FDI_Total_Sent) +
+  geom_point(aes(x= year, y= yrtotal), size = 4, color = "green", fill = "green", stat="identity") +
+  geom_line(mapping = aes(x= year, y= china, fill= "blue"), stat="identity") +
+  scale_y_continuous(name = "News Sentiment: Negative -> Positive", 
+                     sec.axis = sec_axis(~.*.001, name = "FDI, Billions USD")) +
+ scale_x_continuous(breaks=c(2002:2018)) +
+   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  geom_text(label= "China Foreign Direct Investment in USD$",
+            x= 2010, y= 30000) +
+    geom_text(label= "Total Sentiment Score of News Coverage",
+            x= 2009, y= -20000) +
+  labs(title = "China FDI, News Sentiment by Year", 
+       subtitle = "Trends in Foreign Investment in US and News Sentiment",
+       caption = "Source: ProQuest - EconomicFilter Search. 5,306 articles
+       Graphic by Rob Wells. 5-10-2020",
+       x=" ",
+       y="Sentiment: Negative -> Positive") 
+zz
+#Created FDI Sentiment 5-10-2020
+#ggsave("ChinaFDI_Sentiment.png",device = "png",width=10,height=8, dpi=800)
+```
+
+
+### This test shows p-value = 0.006892, which suggests a significant relationship between total negative sentiment in news articles and the amount of China FDI by year
+
+```{r}
+neg1 <- China_FDI_Total_Sent %>% 
+  filter(sentiment=="negative")
+
+cor.test(neg1$china, neg1$yrtotal, method = "pearson")
+```
+
+
+```{r}
+ggscatter(neg1, x = "china", y = "yrtotal", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson",
+          xlab = "China FDI in U.S.", ylab = "Total of Negative News Sentiment")
+
+```
+
+
+### This test shows p-value = 0.004983, which suggests a significant relationship between total positive sentiment in news articles and the amount of China FDI by year
+
+```{r}
+pos1 <- China_FDI_Total_Sent %>% 
+  filter(sentiment=="positive")
+
+cor.test(pos1$china, pos1$yrtotal, method = "pearson")
+```
+
+# This chart examines the trends in FDI and positive news sentiment
+
+```{r}
+ggscatter(pos1, x = "china", y = "yrtotal", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson",
+          xlab = "China FDI in U.S.", ylab = "Total Positive News Sentiment")
+
+```
