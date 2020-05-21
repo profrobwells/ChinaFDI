@@ -6,13 +6,15 @@ output: html_document
 ---
 # Charts of Bing and Custom Sentiment Indexes of China General and Economic News
 
-The following material walks through the construction of a single sentiment index for general and economic news using the Bing sentiment library.
+The following material walks through the construction of a single sentiment index for general and economic news using the Bing sentiment library.   
 
-Details on Bing lexicon: Dictionary of 6,786 words
-https://juliasilge.github.io/tidytext/reference/sentiments.html
-https://www.cs.uic.edu/~liub/FBS/sentiment-analysis.html
+    Details on Bing lexicon: Dictionary of 6,786 words
+    https://juliasilge.github.io/tidytext/reference/sentiments.html
+    https://www.cs.uic.edu/~liub/FBS/sentiment-analysis.html   
 
-Then the general and economic news is assessed using a custom library of 176 terms specifically focused on trade discourse whose sentiment were scored by the authors. 
+Then the general and economic news is assessed using a custom library of 177 terms specifically focused on trade discourse whose sentiment were scored by the authors.   
+
+    https://github.com/profrobwells/ChinaFDI/blob/master/Sentiment%20Analysis/trade_sentiment_5-25.csv
 
 
 ```{r}
@@ -169,7 +171,7 @@ ggsave("./Sentiment Analysis/sentiment_index3.png",device = "png",width=10,heigh
 
 ### Join and compare custom sentiment scores for Economic and Broad Filter
 
-### The Custom Sentiment Score is based on a custom dictionary of 176 terms specifically focused on trade discourse whose sentiment were scored by the authors
+### The Custom Sentiment Score is based on a custom dictionary of 177 terms specifically focused on trade discourse whose sentiment were scored by the authors
 
 ### Here is the Economic News scored by the Custom Sentiment Score
 

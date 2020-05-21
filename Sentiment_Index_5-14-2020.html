@@ -381,9 +381,18 @@ $(document).ready(function () {
 </div>
 
 
+<div id="charts-of-bing-and-custom-sentiment-indexes-of-china-general-and-economic-news" class="section level1">
+<h1>Charts of Bing and Custom Sentiment Indexes of China General and Economic News</h1>
+<p>The following material walks through the construction of a single sentiment index for general and economic news using the Bing sentiment library.</p>
+<pre><code>Details on Bing lexicon: Dictionary of 6,786 words
+https://juliasilge.github.io/tidytext/reference/sentiments.html
+https://www.cs.uic.edu/~liub/FBS/sentiment-analysis.html   </code></pre>
+<p>Then the general and economic news is assessed using a custom library of 177 terms specifically focused on trade discourse whose sentiment were scored by the authors.</p>
+<pre><code>https://github.com/profrobwells/ChinaFDI/blob/master/Sentiment%20Analysis/trade_sentiment_5-25.csv</code></pre>
 <pre class="r"><code>#Optional to clear out the environment
 rm(list=ls())</code></pre>
 <p>Load libraries</p>
+</div>
 <div id="join-and-compare-bing-sentiment-scores-for-economic-and-broad-filter" class="section level1">
 <h1>Join and compare Bing sentiment scores for Economic and Broad Filter</h1>
 <pre class="r"><code>#import EF sentiment score
@@ -526,8 +535,8 @@ ggplot(aes(x= year, y= index, color = &quot;red&quot;, size = 3)) +
 <div id="join-and-compare-custom-sentiment-scores-for-economic-and-broad-filter" class="section level3">
 <h3>Join and compare custom sentiment scores for Economic and Broad Filter</h3>
 </div>
-<div id="the-custom-sentiment-score-is-based-on-a-custom-dictionary-of-169-terms-specifically-focused-on-trade-discourse-whose-sentiment-were-scored-by-the-authors" class="section level3">
-<h3>The Custom Sentiment Score is based on a custom dictionary of 169 terms specifically focused on trade discourse whose sentiment were scored by the authors</h3>
+<div id="the-custom-sentiment-score-is-based-on-a-custom-dictionary-of-177-terms-specifically-focused-on-trade-discourse-whose-sentiment-were-scored-by-the-authors" class="section level3">
+<h3>The Custom Sentiment Score is based on a custom dictionary of 177 terms specifically focused on trade discourse whose sentiment were scored by the authors</h3>
 </div>
 <div id="here-is-the-economic-news-scored-by-the-custom-sentiment-score" class="section level3">
 <h3>Here is the Economic News scored by the Custom Sentiment Score</h3>
