@@ -1,0 +1,340 @@
+---
+title: "Sentiment Broad Filter 5-14-2020"
+author: "Wells"
+date: "5/14/2020"
+output: html_document
+---
+# Sentiment Analysis of Broad Filter Corpus of Stories
+### Analysis of 5,204 Articles from 2000-2019
+    Rob Wells, Ph.D.
+    Austin Wilkins, M.A. candidate
+    University of Arkansas School of Journalism
+
+
+#rm(list=ls())
+
+Load libraries
+```{r}
+
+library(tidyverse)
+library(tidytext)
+library(XML)
+library(janitor)
+library(kableExtra)
+library(lubridate)
+```
+
+Load dictionaries
+
+```{r}
+afinn <-get_sentiments("afinn")
+bing <- get_sentiments("bing")
+```
+
+```{r}
+#Have to load NRC separately
+#http://sentiment.nrc.ca/lexicons-for-research/
+# nrc <- rio::import("/Users/robwells/Dropbox/Current_Projects/China Notes  Background/NRC-Sentiment-Emotion-Lexicons/NRC-Emotion-Lexicon-v0.92/Older Versions/NRC-Emotion-Lexicon-v0.92-InManyLanguages.xlsx")
+# nrc <- janitor::clean_names(nrc)
+# nrc <- nrc %>% 
+#   select(english_word, positive, negative, anger, anticipation, disgust, fear, joy, sadness, surprise, trust)
+# colnames(nrc)[1] <- "word"
+# write.csv(nrc, "nrc.csv")
+# 
+# nrc %>% 
+#   count(positive, negative)
+# 
+# nrc1 <- rio::import("/Users/robwells/Dropbox/Current_Projects/China Notes  Background/NRC-Sentiment-Emotion-Lexicons/NRC-Emotion-Lexicon-v0.92/NRC-Emotion-Lexicon-Wordlevel-v0.92.txt")
+# colnames(nrc1)[1:3] <- c("word", "sentiment", "score")
+# write.csv(nrc1, "nrc1.csv")
+# #
+```
+
+```{r}
+setwd("~/Dropbox/Current_Projects/ChinaFDI")
+nrc1 <- rio::import("nrc1.csv")
+
+nrc2 <- nrc1 %>% 
+  filter(score >=1)
+```
+
+###  Import Broad Filter Articles
+```{r}
+BF <- rio::import("./BroadFilter_Jan 2020/BroadFilter2020.csv")
+```
+
+# Sentiment Analysis 
+
+### Tokenize the TEXT table)
+```{r}
+reg <- "([^A-Za-z\\d#@']|'(?![A-Za-z\\d#@]))"
+TEXT_token <- BF %>%
+  filter(!str_detect(Text, '^"')) %>%
+  #mutate(text = str_replace_all(text, "https://t.co/[A-Za-z\\d]+|&amp;", "")) %>%
+  unnest_tokens(word, Text, token = "regex", pattern = reg) %>%
+  filter(!word %in% stop_words$word,
+         str_detect(word, "[a-z]"))
+
+#Clean out ' character in word columm of TEXT_token
+#example: 'growing
+TEXT_token$word <- 
+  gsub("'","", TEXT_token$word)
+
+#remove spaces
+TEXT_token$word <- 
+  gsub(" ","", TEXT_token$word)
+BF_YEAR <- TEXT_token
+#save
+#write.csv(BF_YEAR, "./BroadFilter_Jan 2020/BF_YEAR_TOKENS.csv")
+```
+
+```{r}
+glimpse(BF_YEAR)
+```
+
+
+### Format for year
+```{r}
+BF_YEAR$year <- lubridate::year(BF_YEAR$Date)
+```
+
+#Table of Common Words by Year
+```{r}
+BFWordsYear <- BF_YEAR %>%
+  group_by(year,word) %>% 
+  count(word) %>%
+  filter(sum(n) >= 5) %>%
+  arrange(desc(n))
+  
+head(BFWordsYear)
+#write.csv(BFWordsYear, "./BroadFilter_Jan 2020/BFWordsYear.csv")
+```
+
+
+
+
+# Filter noise like President, Trump,  Premier
+
+```{r}
+junk <- c("trump", "president", "china", "chinese", "american", "trumps", "canada", "european", "chinas", 
+          "beijing", "north", "south", "korea", "mexico", "washington", "mstar", "united", "states", "government",
+          "administration", "white", "house", "xi", "premier", "lighthizer", "wto")
+```
+
+```{r}
+BFWordsYear <- BFWordsYear %>% 
+  filter(!word  %in% junk)
+```
+
+# Create totalled sentiment by year: Bing
+
+```{r}
+a <- BFWordsYear  %>%
+  inner_join(bing, by = "word") %>%
+  select(year, word, sentiment, n) 
+head(a)
+
+```
+
+### Transforming the 'negative' and 'positive' into a numeric value
+```{r}
+a$score  <- a$sentiment
+
+a$score <- gsub("positive", "1", a$score)
+a$score <- gsub("negative", "-1", a$score)
+a$score <- as.numeric(a$score)
+glimpse(a)
+```
+
+
+```{r}
+a<- a %>% 
+  mutate(newscore = (score*n))
+head(a)
+```         
+
+```{r}
+a %>%
+   group_by(year, sentiment) %>% 
+     summarise(yrtotal = sum(newscore))
+head(a)
+```
+
+
+Total net sentiment score
+```{r}
+bing_by_year_BF <- a %>%
+   group_by(year) %>% 
+     summarise(yrtotal = sum(newscore))
+head(bing_by_year_BF)
+```
+
+--Average Negative - Positive Scores
+```{r}
+average_bing_by_year_BF <- a %>%
+   group_by(year, sentiment, newscore) %>% 
+     summarise(yrtotal = sum(newscore)) %>% 
+    summarise(yr_average = mean(newscore))  
+head(average_bing_by_year_BF)
+```
+
+```{r}
+average_bing_by_year_BF %>% 
+ggplot(aes(x= year, y= yr_average, color = yr_average > .1, size = 4)) +
+  geom_point() +
+  scale_x_continuous(breaks=c(2000:2019)) +
+  theme(legend.position = "none") +
+   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+   labs(title = "China News Sentiment by Year", 
+       subtitle = "Average Sentiment, News on Chinese Investment in U.S.",
+       caption = "Source: ProQuest - BroadFilter Search. 5,209 articles
+       Graphic by Rob Wells. 5-14-2020",
+       x=" ",
+       y="Sentiment: Negative -> Positive") 
+
+#ggsave("AvgChina_Sentiment.png",device = "png",width=10,height=8, dpi=800)
+
+```
+
+
+Average sentiment score
+```{r}
+c <- a %>%
+   group_by(year) %>% 
+     summarise(BF_yravg = mean(newscore))
+head(c)
+#write_csv(c, "./Sentiment Analysis/BF_single_bing_year.csv")
+```
+
+```{r}
+mean(c$BF_yravg)
+```
+
+
+```{r}
+c %>% 
+ggplot(aes(x= year, y= BF_yravg, color = BF_yravg > -2.334863, size = 4)) +
+  geom_point() +
+  scale_x_continuous(breaks=c(2000:2019)) +
+  theme(legend.position = "none") +
+   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+   labs(title = "China News Sentiment by Year", 
+       subtitle = "Average Sentiment, News on Chinese Investment in U.S.",
+       caption = "Blue= Above average sentiment of -2.3. Red = Below average sentiment. \n Source: ProQuest - BroadFilter Search. 5,209 articles
+       Graphic by Rob Wells. 5-14-2020",
+       x=" ",
+       y="Sentiment: Negative -> Positive") 
+
+#ggsave("AvgChina_Sentiment.png",device = "png",width=10,height=8, dpi=800)
+
+```
+
+
+
+
+## Total Custom Sentiment for Economic Filter
+
+### Importing custom list of 169 trade terms curated by Wells and Zeng. 
+--  Full list is in Box, Negative-Postiive Key Terms on Trade 4-18-19.xlsx
+-- trade_terms columns are word and score
+```{r}
+trade_terms <- rio::import("./Sentiment Analysis/trade_sentiment_5-25.csv")
+head(trade_terms)
+```
+
+
+### Preferred method of calculating sentiment: Sentiment * Word Frequency
+```{r}
+BFCustomYearsentiment <- BFWordsYear  %>%
+  inner_join(trade_terms, by = "word") %>% 
+   select(year, word, rating, n) 
+head(BFCustomYearsentiment)
+```
+
+
+```{r}
+sum(BFCustomYearsentiment$n)
+```
+
+```{r}
+b <- BFCustomYearsentiment
+```
+
+
+```{r}
+b<- b %>% 
+  mutate(newscore = (rating*n))
+head(b)
+```         
+
+### Average custom sentiment score
+```{r}
+custom_by_year_BF <- b %>%
+   group_by(year) %>% 
+     summarise(BFyravg = mean(newscore))
+head(custom_by_year_BF)
+write.csv(custom_by_year_BF, "./Sentiment Analysis/custom_by_year_BF.csv")
+```
+
+```{r}
+#Average custom sentiment score is -10.34721
+mean(custom_by_year_BF$BFyravg)
+```
+
+```{r}
+custom_by_year_BF %>% 
+ggplot(aes(x= year, y= BFyravg, color = BFyravg > -10.34721, size = 4)) +
+  geom_point() +
+  scale_x_continuous(breaks=c(2000:2019)) +
+  theme(legend.position = "none") +
+   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+   labs(title = "Sentiment: General News on China", 
+       subtitle = "Custom Sentiment on Chinese Investment in U.S.",
+       caption = "Blue= Above average sentiment of -10.3. Red = Below average sentiment. \n Source: ProQuest - Economic Filter Search. 5,306 articles
+       Graphic by Rob Wells. 5-16-2020",
+       x=" ",
+       y="Sentiment: Negative -> Positive") 
+
+ggsave("./Sentiment Analysis/custom_by_year_BF.png",device = "png",width=10,height=8, dpi=800)
+
+```
+
+
+# Notes Below
+#### ALTERNATE calculation using totals, not averages
+```{r}
+#Sum of the custom sentiment score by year for Economic Filter
+#Not using this because more words = higher scores
+custom_by_year_TOTAL_BF <- b %>%
+   group_by(year) %>% 
+     summarise(custom_total = sum(newscore))
+head(custom_by_year_BF)
+#write.csv(custom_by_year_BF, "./Sentiment Analysis/custom_by_year_TOTAL_BF.csv")
+```
+
+
+-- Validation test by year. All OK
+```{r}
+#test by year
+wtf <- b %>% 
+  filter(year =="2019") %>% 
+  group_by(year)
+```
+
+```{r}
+sum(wtf$newscore)
+```
+All OK
+
+
+
+```{r}
+#Average the total of custom sentiment score is -1123.35
+mean(custom_by_year_BF$custom_total)
+```
+
+
+
+
+ 
+
