@@ -9,7 +9,7 @@
 
 rm(list=ls())
 
-#setwd("/home/austin/Documents/Projects/ChinaFDI")
+setwd("/home/austin/Documents/Projects/ChinaFDI")
 
 library(tidyverse)
 library(tidytext)
@@ -98,10 +98,13 @@ by_month <- by_month %>%
         adorn_totals("row")))
 
 
-montly_sent <- by_month %>% 
+monthly_sent <- by_month %>% 
   unnest(monthly_sent)
 
-write.csv(montly_sent, "./BroadFilter/BF_sentiment_score_byMonth.csv")
+
+monthly_sent <- monthly_sent %>% filter(sentiment == "positive" | sentiment == "negative")
+
+write.csv(monthly_sent, "./BroadFilter/BF_sentiment_score_byMonth.csv")
 
 
 
