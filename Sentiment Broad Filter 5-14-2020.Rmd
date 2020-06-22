@@ -63,6 +63,12 @@ nrc2 <- nrc1 %>%
 BF <- rio::import("./BroadFilter_Jan 2020/BroadFilter2020.csv")
 ```
 
+```{r}
+BF$Text <- gsub("<.*/>","",BF$Text)
+#BF$Text <- gsub("</?[^>]+>", "", BF$Text)
+```
+
+
 # Sentiment Analysis 
 
 ### Tokenize the TEXT table)
@@ -110,7 +116,10 @@ head(BFWordsYear)
 #write.csv(BFWordsYear, "./BroadFilter_Jan 2020/BFWordsYear.csv")
 ```
 
-
+```{r}
+#To resume analysis
+#BFWordsYear <- rio::import("./BroadFilter_Jan 2020/BFWordsYear.csv")
+```
 
 
 # Filter noise like President, Trump,  Premier
@@ -121,11 +130,18 @@ junk <- c("trump", "president", "china", "chinese", "american", "trumps", "canad
           "administration", "white", "house", "xi", "premier", "lighthizer", "wto")
 ```
 
+
+
+
 ```{r}
 BFWordsYear <- BFWordsYear %>% 
   filter(!word  %in% junk)
 ```
 
+```{r}
+#BFWordsYear <- BFWordsYear %>% 
+#  filter(!word  %in% junk2)
+```
 # Create totalled sentiment by year: Bing
 
 ```{r}
@@ -152,6 +168,11 @@ a<- a %>%
   mutate(newscore = (score*n))
 head(a)
 ```         
+
+```{r}
+BF_sent_score <- a
+#write.csv(BF_sent_score, "./BroadFilter_Jan 2020/BF_sent_score.csv")
+```
 
 ```{r}
 a %>%
@@ -203,7 +224,7 @@ c <- a %>%
    group_by(year) %>% 
      summarise(BF_yravg = mean(newscore))
 head(c)
-#write_csv(c, "./Sentiment Analysis/BF_single_bing_year.csv")
+write_csv(c, "./Sentiment Analysis/BF_single_bing_year_6_22_2020.csv")
 ```
 
 ```{r}
