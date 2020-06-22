@@ -70,8 +70,14 @@ BF <- rio::import("./BroadFilter_Jan 2020/BroadFilter2020.csv")
 # Using the rvest library
 # html_text() will remove all html tags
 # read_html() uses XML2 to put the text into a format the html_text can easily parse
+# These are put into a function to map to each row in the dataframe
 library(rvest)
-BF$Text <- html_text(read_html(BF$Text))
+library(purrr)
+strip_html <- function(x) {
+    html_text(read_html(x))
+}
+
+BF$Text <- map(BF$Text,strip_html)
 ```
 
 
