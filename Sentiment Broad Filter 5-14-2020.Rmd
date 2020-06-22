@@ -64,8 +64,14 @@ BF <- rio::import("./BroadFilter_Jan 2020/BroadFilter2020.csv")
 ```
 
 ```{r}
-BF$Text <- gsub("<.*/>","",BF$Text)
+#BF$Text <- gsub("<.*/>","",BF$Text)
 #BF$Text <- gsub("</?[^>]+>", "", BF$Text)
+
+# Using the rvest library
+# html_text() will remove all html tags
+# read_html() uses XML2 to put the text into a format the html_text can easily parse
+library(rvest)
+BF$Text <- html_text(read_html(BF$Text[2]))
 ```
 
 
