@@ -1,7 +1,7 @@
 ---
-title: "Sentiment Broad Filter 5-14-2020"
+title: "Sentiment Broad Filter 6-22-2020"
 author: "Wells"
-date: "5/14/2020"
+date: "6/22/2020"
 output: html_document
 ---
 # Sentiment Analysis of Broad Filter Corpus of Stories
@@ -78,6 +78,7 @@ strip_html <- function(x) {
 }
 
 BF$Text <- map(BF$Text,strip_html)
+BF$Text <- as.character(BF$Text)
 rm(strip_html)
 ```
 
@@ -126,7 +127,7 @@ BFWordsYear <- BF_YEAR %>%
   arrange(desc(n))
   
 head(BFWordsYear)
-#write.csv(BFWordsYear, "./BroadFilter_Jan 2020/BFWordsYear.csv")
+write.csv(BFWordsYear, "./BroadFilter_Jan 2020/BFWordsYear.csv")
 ```
 
 ```{r}
@@ -140,7 +141,7 @@ head(BFWordsYear)
 ```{r}
 junk <- c("trump", "president", "china", "chinese", "american", "trumps", "canada", "european", "chinas", 
           "beijing", "north", "south", "korea", "mexico", "washington", "mstar", "united", "states", "government",
-          "administration", "white", "house", "xi", "premier", "lighthizer", "wto")
+          "administration", "white", "house", "xi", "premier", "lighthizer", "wto", "issue", "issues", "vice")
 ```
 
 
@@ -151,10 +152,6 @@ BFWordsYear <- BFWordsYear %>%
   filter(!word  %in% junk)
 ```
 
-```{r}
-#BFWordsYear <- BFWordsYear %>% 
-#  filter(!word  %in% junk2)
-```
 # Create totalled sentiment by year: Bing
 
 ```{r}
@@ -184,7 +181,7 @@ head(a)
 
 ```{r}
 BF_sent_score <- a
-#write.csv(BF_sent_score, "./BroadFilter_Jan 2020/BF_sent_score.csv")
+write.csv(BF_sent_score, "./BroadFilter_Jan 2020/BF_sent_score.csv")
 ```
 
 ```{r}
@@ -247,7 +244,7 @@ mean(c$BF_yravg)
 
 ```{r}
 c %>% 
-ggplot(aes(x= year, y= BF_yravg, color = BF_yravg > -2.334863, size = 4)) +
+ggplot(aes(x= year, y= BF_yravg, color = BF_yravg > -1.24311, size = 4)) +
   geom_point() +
   scale_x_continuous(breaks=c(2000:2019)) +
   theme(legend.position = "none") +
@@ -311,7 +308,7 @@ write.csv(custom_by_year_BF, "./Sentiment Analysis/custom_by_year_BF.csv")
 ```
 
 ```{r}
-#Average custom sentiment score is -10.34721
+#Average custom sentiment score is -10.34388
 mean(custom_by_year_BF$BFyravg)
 ```
 

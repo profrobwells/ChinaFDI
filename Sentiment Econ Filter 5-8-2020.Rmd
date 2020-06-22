@@ -1,7 +1,7 @@
 ---
 title: "Sentiment Analysis May 8 2020"
 author: "Rob Wells"
-date: "5/8/2020"
+date: "6/22/2020"
 output: html_document
 ---
 
@@ -27,6 +27,92 @@ library(tidytext)
 library(rio)
 library(tidyverse)
 ```
+### Import
+```{r}
+EF <- rio::import("./EconomicFilter/Economicfilter2020.csv")
+```
+
+### Clean stray HTML from Text field
+```{r}
+# Using the rvest library
+# html_text() will remove all html tags
+# read_html() uses XML2 to put the text into a format the html_text can easily parse
+# These are put into a function to map to each row in the dataframe
+library(rvest)
+library(purrr)
+strip_html <- function(x) {
+    html_text(read_html(x))
+}
+
+EF$Text <- map(EF$Text,strip_html)
+EF$Text <- as.character(EF$Text)
+rm(strip_html)
+```
+
+
+
+
+### Tokenize the TEXT table)
+```{r}
+reg <- "([^A-Za-z\\d#@']|'(?![A-Za-z\\d#@]))"
+TEXT_token <- EF %>%
+  filter(!str_detect(Text, '^"')) %>%
+  #mutate(text = str_replace_all(text, "https://t.co/[A-Za-z\\d]+|&amp;", "")) %>%
+  unnest_tokens(word, Text, token = "regex", pattern = reg) %>%
+  filter(!word %in% stop_words$word,
+         str_detect(word, "[a-z]"))
+
+#Clean out ' character in word columm of TEXT_token
+#example: 'growing
+TEXT_token$word <- 
+  gsub("'","", TEXT_token$word)
+
+#remove spaces
+TEXT_token$word <- 
+  gsub(" ","", TEXT_token$word)
+
+
+#TEXT_token <- select (TEXT_token, c(headline, article_nmbr, linenumber, word2))
+#colnames(TEXT_token)[4] <- "word"
+
+#Table of Common Words 
+CommonTEXTWords <- TEXT_token %>%
+  count(word) %>%
+  filter(sum(n) >= 5) %>%
+  arrange(desc(n))
+
+
+#save
+write.csv(CommonTEXTWords, "./EconomicFilter/EF_Words_Total.csv")
+```
+
+### Table of Common Words by Publication
+```{r}
+CommonTEXTWords2 <- TEXT_token %>%
+  group_by(Pub) %>% 
+  count(word) %>%
+  filter(sum(n) >= 5) %>%
+  arrange(desc(n))
+```
+
+### Date Common Words by Publication
+```{r}
+DateWords <- TEXT_token %>%
+  mutate(year =year(Date))
+  
+  YearWords <- DateWords %>% 
+  select(year, Pub, word) %>% 
+  group_by(year) %>% 
+  count(word) %>%
+  filter(n >= 5) %>%
+  arrange(desc(n))
+  
+  #save
+write.csv(YearWords, "./EconomicFilter/YearWords.csv")
+```
+
+
+
 
 Load dictionaries
 
@@ -73,7 +159,7 @@ YearWords <- rio::import("./EconomicFilter/YearWords.csv")
 ```{r}
 junk <- c("trump", "president", "china", "chinese", "american", "trumps", "canada", "european", "chinas", 
           "beijing", "north", "south", "korea", "mexico", "washington", "mstar", "united", "states", "government",
-          "administration", "white", "house", "xi", "premier", "lighthizer", "wto")
+          "administration", "white", "house", "xi", "premier", "lighthizer", "wto", "issue", "issues", "vice")
 ```
 
 ```{r}
@@ -154,7 +240,10 @@ head(bing_AVG_EF_sent_year)
 xx <- x %>%
    group_by(year) %>% 
      summarise(EF_yravg = mean(newscore))
-#write.csv(xx, "/Users/robwells/Dropbox/Current_Projects/ChinaFDI/Sentiment Analysis/EF_single_bing_year.csv")
+```
+
+```{r}
+write.csv(xx, "./Sentiment Analysis/EF_single_bing_year_6_22_2020.csv")
 head(xx)
 ```
 
@@ -164,7 +253,7 @@ mean(xx$EF_yravg)
 
 ```{r}
 xx %>% 
-ggplot(aes(x= year, y= EF_yravg, color = EF_yravg > -2.134966, size = 4)) +
+ggplot(aes(x= year, y= EF_yravg, color = EF_yravg > -1.011729, size = 4)) +
   geom_point() +
   scale_x_continuous(breaks=c(2000:2019)) +
   theme(legend.position = "none") +
@@ -172,7 +261,7 @@ ggplot(aes(x= year, y= EF_yravg, color = EF_yravg > -2.134966, size = 4)) +
    labs(title = "China News Sentiment by Year", 
        subtitle = "Bing Average Sentiment, Economic News",
        caption = "Blue= Above average sentiment of -2.1. Red = Below average sentiment. \n Source: ProQuest - Economic Filter Search. 5,306 articles
-       Graphic by Rob Wells. 5-14-2020",
+       Graphic by Rob Wells. 6-22-2020",
        x=" ",
        y="Sentiment: Negative -> Positive") 
 
@@ -242,13 +331,13 @@ write.csv(custom_by_year_EF, "./Sentiment Analysis/custom_by_year_EF.csv")
 
 
 ```{r}
-#Average custom sentiment score is -7.804261
+#Average custom sentiment score is -7.80097
 mean(custom_by_year_EF$EFyravg)
 ```
 
 ```{r}
 custom_by_year_EF %>% 
-ggplot(aes(x= year, y= EFyravg, color = EFyravg > -7.804261, size = 4)) +
+ggplot(aes(x= year, y= EFyravg, color = EFyravg > -7.80097, size = 4)) +
   geom_point() +
   scale_x_continuous(breaks=c(2000:2019)) +
   theme(legend.position = "none") +
@@ -263,90 +352,3 @@ ggplot(aes(x= year, y= EFyravg, color = EFyravg > -7.804261, size = 4)) +
 ggsave("CustomAvgChina_Sentiment.png",device = "png",width=10,height=8, dpi=800)
 
 ```
-
-### Notes below
-### Notes below  
-### Notes below
-### Notes below
-
-
-## Notes Below - Older Version of Totaled Scores, Not Averaged
-
-```{r}
-#Older version that summed the custom sentiment.
-#Newer version does the average
-custom_by_year_TOTAL_EF <- a %>%
-   group_by(year) %>% 
-     summarise(custom_total = sum(newscore))
-head(custom_by_year_TOTAL_EF)
-#write.csv(custom_by_year_TOTAL_EF, "./Sentiment Analysis/custom_by_year_TOTAL_EF.csv")
-```
-
--- Validation test by year. All OK
-```{r}
-#test by year
-wtf <- a %>% 
-  filter(year =="2019") %>% 
-  group_by(year)
-```
-
-```{r}
-sum(wtf$newscore)
-```
-All OK
-
-
--- Average custom sentiment score is -1072.5
-```{r}
-mean(custom_by_year_EF$custom_total)
-```
-
-
-## Older version of summing the number of terms for sentiment total
-
-# Create totalled sentiment by year: Bing
-
-Total Bing Sentiment. This version only counts sentiment and not word frequency. It is replaced by an improved method at line 119 that tabulates sentiment and word frequency
-```{r}
-z <- YearWords  %>%
-  inner_join(bing, by = "word") %>%
-  group_by(year) %>% 
-    count(sentiment) %>% 
-    arrange(desc(n)) %>% 
-    spread(sentiment, n, fill=0) %>% 
-    mutate(article_score = positive - negative)
-head(z)
-```    
-
-### This section is the count of articles divided into the sentiment score for a normalized metric of sentiment / article
-
-#averages the scores of articles with the companies mentioned
-xyz <- cos_sum_sentiment %>% 
-  select(pattern, pub.x, article_score, date) %>% 
-  group_by(pattern) %>% 
-  summarise(avg = mean(article_score)) %>% 
-  arrange(desc(avg))
-
-#Count of articles by company
-count <- cos_sum_sentiment %>% 
-  select(pattern, article_nmbr) %>% 
-  group_by(pattern) %>% 
-  count(pattern) %>% 
-  ungroup()
-
-#join the sentiment and article totals
-both <- xyz %>% 
-  inner_join(count)
-#
-#Ratio of average score to number of articles
-both$ratio <- both$avg/both$n
-#
-#Add total score
-both <- both %>% 
-  inner_join(abc)
-
-company_totals <- both %>% 
-  select(pattern, avg, n, ratio, total)
-
-write_csv(company_totals, "company_totals-7-27-19.csv")
-
