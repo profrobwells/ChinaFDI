@@ -78,6 +78,7 @@ strip_html <- function(x) {
 }
 
 BF$Text <- map(BF$Text,strip_html)
+rm(strip_html)
 ```
 
 
