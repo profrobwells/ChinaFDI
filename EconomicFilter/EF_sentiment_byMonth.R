@@ -24,7 +24,16 @@ EF <- rio::import("./EconomicFilter/Economicfilter2020.csv") %>%
   separate(Date, c("Year","Month","Day"),"-",convert=TRUE) %>% 
   unite("Year-Month",Year:Month,remove=FALSE)
 
+#-----NEW CODE TO STRIP HTML------#
+library(rvest)
+library(purrr)
+strip_html <- function(x) {
+  html_text(read_html(x))
+}
 
+EF$Text <- map_chr(EF$Text,strip_html)
+rm(strip_html)
+#---------------------------------#
 
 #---------------------------------------------------------------------------
 # Sentiments
@@ -46,6 +55,9 @@ TEXT_token$word <-
 #remove spaces
 TEXT_token$word <- 
   gsub(" ","", TEXT_token$word)
+
+
+
 
 
 #nest dataframe

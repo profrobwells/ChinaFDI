@@ -5,7 +5,7 @@
 
 # Sentiment by Month
 # June 9, 2020
-# This script is mostly a copy of EF_Sentiment.R, with edits to add montly analysis
+# This script is mostly a copy of BF_Sentiment.R, with edits to add montly analysis
 
 rm(list=ls())
 
@@ -20,10 +20,20 @@ library(lubridate)
 library(bit64)
 
 #Import
-EF <- rio::import("./BroadFilter/BroadFilter2020.csv") %>% 
+BF <- rio::import("./BroadFilter/BroadFilter2020.csv") %>% 
   separate(Date, c("Year","Month","Day"),"-",convert=TRUE) %>% 
   unite("Year-Month",Year:Month,remove=FALSE)
 
+#-----NEW CODE TO STRIP HTML------#
+library(rvest)
+library(purrr)
+strip_html <- function(x) {
+  html_text(read_html(x))
+}
+
+BF$Text <- map_chr(BF$Text,strip_html)
+rm(strip_html)
+#---------------------------------#
 
 
 #---------------------------------------------------------------------------
@@ -32,7 +42,7 @@ EF <- rio::import("./BroadFilter/BroadFilter2020.csv") %>%
 #Tokenize the TEXT table)
 
 reg <- "([^A-Za-z\\d#@']|'(?![A-Za-z\\d#@]))"
-TEXT_token <- EF %>%
+TEXT_token <- BF %>%
   filter(!str_detect(Text, '^"')) %>%
   #mutate(text = str_replace_all(text, "https://t.co/[A-Za-z\\d]+|&amp;", "")) %>%
   unnest_tokens(word, Text, token = "regex", pattern = reg) %>%
@@ -46,6 +56,7 @@ TEXT_token$word <-
 #remove spaces
 TEXT_token$word <- 
   gsub(" ","", TEXT_token$word)
+
 
 
 #nest dataframe
